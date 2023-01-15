@@ -1,7 +1,8 @@
 pub mod recognizer;
 pub mod connector;
-use serde_json::{Result, Value};
+use serde_json::Value;
 use serde::{Deserialize, Serialize};
+use std::result;
 use std::{fs::File, io::BufReader, error::Error};
 
 #[derive(Clone)]
@@ -32,7 +33,7 @@ pub struct OrganismConfig {
 impl Organism {
     pub fn print(self){
         for rec in self.recognizers {
-            rec.print();        
+            rec.clone().print();        
         }
     }
 }
@@ -67,69 +68,80 @@ impl Default for OrganismConfig {
 }
 
 pub fn build_org(recognizers: Vec<recognizer::Recognizer>, connectors: Vec<connector::Connector>) -> Organism {
-    /*Organism {
+    Organism {
         recognizers,
         connectors,
         config: Default::default(),
-    }*/
-    Organism::default()
+    }
 }
 
-pub fn import_org(org: Value, config: (Value, Value, Value)) -> Organism  {
-    let num_nodes = org.as_array().unwrap().len();
-    let curr_node: usize = 0;
-    
+pub fn import_org_from_value(org: Value, config: (Value, Value, Value)) -> result::Result<Organism, Box<dyn Error>>  {
+    let num_nodes = org.as_array().expect("Organism is not an array of nodes").len();
 
-    /*
-    let file = File::open(filename).unwrap();
-    let reader = BufReader::new(file);
-    let v: Value = serde_json::from_reader(reader).unwrap();
-    let num_orgs = v.as_array().unwrap().len();
+    let mut curr_node_num: usize = 0;
+    let mut curr_col: usize = 0;
+    let mut curr_base: usize = 0;
+    let org_conf: OrganismConfig = serde_json::from_value(config.0).unwrap();
+    let rec_conf: recognizer::PssmConfig = serde_json::from_value(config.1).unwrap();
+    let con_conf: connector::ConnectorConfig = serde_json::from_value(config.2).unwrap();
+    let mut scores: Vec<f64> = vec![0.0; rec_conf.max_columns.unwrap() * 4];
+    let mut recs: Vec<recognizer::Recognizer> = Vec::with_capacity(org_conf.max_nodes.unwrap() / 2 + 1);
+    let mut conns: Vec<connector::Connector> = Vec::with_capacity(org_conf.max_nodes.unwrap() / 2);
 
-    let mut scores: Vec<f64> = vec![0.0; max_rec_size * 4];
-    let mut orgs: Vec<Organism> = Vec::with_capacity(num_orgs);
-    let mut c: usize = 0;
-    let mut p: usize = 0;
-    let mut b: usize = 0;
-    let mut o: usize = 0;
 
-    while o < num_orgs {
-        let num_nodes = v[o].as_array().unwrap().len();
-        let mut recs: Vec<recognizer::Recognizer> = Vec::with_capacity(max_recs);
-        let mut conns: Vec<connector::Connector> = Vec::with_capacity(max_recs - 1);
-        while c < num_nodes {
-            let s = &v[o][c].as_object().unwrap(); 
-            match s["objectType"].as_str().unwrap() {
-                
-                "pssm" => {
-                    let s = &s["pwm"].as_array().unwrap();
-                    while p < s.len() {
-                        let s = &s[p].as_object().unwrap();
+    while curr_node_num < num_nodes {
+        let curr_node = &org.as_array()
+                            .unwrap()
+                            [curr_node_num]
+                            .as_object()
+                            .unwrap();
+
+        match curr_node["objectType"]
+                        .as_str()
+                        .unwrap(){
+            "pssm" => {
+                    
+                    let r = &curr_node["pwm"]
+                                      .as_array()
+                                      .unwrap();
+
+                    while curr_col < r.len() {
+                        let r = &r[curr_col]
+                                  .as_object()
+                                  .unwrap();
+
                         for base in ["a", "c", "g", "t"] {
-                            scores[p * s.len() + b] = s[base].as_f64().unwrap();
-                            b += 1
+                            scores[curr_col * 4 + curr_base] = r[base].as_f64().unwrap();
+                            curr_base += 1;
                         }
-                        b = 0;
-                        p += 1
+
+                        curr_base = 0;
+                        curr_col += 1;
                     }
-                    recs.push(recognizer::build_rec(Vec::to_owned(&scores), 'p', s.len(), max_rec_size));
+
+                    curr_col = 0;
+                    recs.push(recognizer::build_rec(scores.to_owned(), 'p', r.len(), Some(rec_conf.to_owned()))); 
                 },
 
-                "connector" => {
-                    conns.push(connector::build_conn(s["mu"].as_f64().unwrap(), s["sigma"].as_f64().unwrap()));
-                }
-                _ => std::process::exit(5),
-            
-            }
-            p = 0;
-            c += 1;
+            "connector" => {
+                    conns.push(connector::build_conn(curr_node["mu"].as_f64().unwrap(), curr_node["sigma"].as_f64().unwrap(), Some(con_conf.to_owned())));
+                },
+
+            _ => println!("hi"),
         }
-    //build_org(recs, conns, max_recs, max_rec_size).print();
-    orgs.push(build_org(recs, conns, max_recs, max_rec_size));
-    c = 0;
-    o += 1;
+        curr_node_num += 1;
     }
-    orgs
-    */
-    Organism::default()
+     
+    let org: Organism = build_org(recs, conns);
+    Ok(org)
+}
+
+pub fn import_org_from_json(org_file: &str, conf_file: &str, org_num: usize) -> result::Result<Organism, Box<dyn Error>>{
+    let conf_file = File::open(conf_file).unwrap();
+    let conf_reader = BufReader::new(conf_file);
+    let conf_value: Value = serde_json::from_reader(conf_reader).unwrap();
+    let org_file = File::open(org_file).unwrap();
+    let org_reader = BufReader::new(org_file);
+    let org_value: Value = serde_json::from_reader(org_reader).unwrap(); 
+    Ok(import_org_from_value(org_value[org_num].to_owned(), (conf_value["organism"].to_owned(), conf_value["pssm"].to_owned(), conf_value["connector"].to_owned())).unwrap())
 }

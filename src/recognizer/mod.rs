@@ -1,6 +1,4 @@
-use serde_json::{Result, Value};
 use serde::{Deserialize, Serialize};
-use std::{fs::File, io::BufReader, error::Error};
 
 #[derive(Clone)]
 pub struct Recognizer {
@@ -49,12 +47,12 @@ impl Default for PssmConfig {
     }
 }
 
-pub fn build_rec(mut rec_scores: Vec<f64>, mut rec_type: char, mut rec_size: usize) -> Recognizer {
+pub fn build_rec(mut rec_scores: Vec<f64>, mut rec_type: char, mut rec_size: usize, config: Option<PssmConfig>) -> Recognizer {
     Recognizer {
         rec_scores,
         rec_type,
         rec_size,
-        config: Default::default(),
+        config: if config.is_some() {config.expect("Failed to set recognizer config")} else {Default::default()},
     }
 }
 
@@ -73,5 +71,21 @@ impl Recognizer {
             c = 0;
             i += 1;
         }
+    }
+
+    pub fn print_config(self) {
+        println!("{}", self.config.mutate_probability_random_col.unwrap());
+        println!("{}", self.config.mutate_probability_mutate_col.unwrap());
+        println!("{}", self.config.mutate_probability_flip_col.unwrap());
+        println!("{}", self.config.mutate_probability_flip_row.unwrap());
+        println!("{}", self.config.mutate_probability_shift_left.unwrap());
+        println!("{}", self.config.mutate_probability_shift_right.unwrap());
+        println!("{}", self.config.mutate_probability_increase_pwm.unwrap());
+        println!("{}", self.config.mutate_probability_decrease_pwm.unwrap());
+        println!("{}", self.config.min_columns.unwrap());
+        println!("{}", self.config.max_columns.unwrap());
+        println!("{}", self.config.upper_print_probability.unwrap());
+        println!("{}", self.config.pseudo_count.unwrap());
+        println!("{}", self.config.scan_reverse_complement.unwrap());
     }
 }

@@ -1,6 +1,4 @@
-use serde_json::{Result, Value};
 use serde::{Deserialize, Serialize};
-use std::{fs::File, io::BufReader, error::Error};
 
 #[derive(Clone)]
 pub struct Connector {
@@ -39,12 +37,12 @@ impl Default for ConnectorConfig {
     }
 }
 
-pub fn build_conn(mu: f64, sigma: f64) -> Connector {
+pub fn build_conn(mu: f64, sigma: f64, conf: Option<ConnectorConfig>) -> Connector {
     Connector {
         mu,
         sigma,
         conn_scores: Vec::new(),
-        conf: Default::default(),
+        conf: if conf.is_some() { conf.expect("Failed to set connector config") } else { Default::default() },
     }
 }
 
