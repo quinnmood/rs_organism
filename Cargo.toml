@@ -1,9 +1,11 @@
 [package]
 name = "organism"
-version = "0.1.0"
+version = "0.1.1"
 edition = "2021"
 include = [
-  "**/*.rs",
+  "src/lib.rs",
+  "src/recognizer/mod.rs",
+  "src/connector/mod.rs",
 ]
 license = "MIT"
 description = "A struct used for a genetic programing algorithm"

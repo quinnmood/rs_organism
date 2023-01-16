@@ -2,31 +2,13 @@ pub mod recognizer;
 pub mod connector;
 use serde_json::Value;
 use serde::{Deserialize, Serialize};
-use std::{fs::File, io::BufReader, error::Error};
+use std::{fs::File, io::BufReader};
 
 #[derive(Clone)]
 pub struct Organism {
     pub recognizers: Vec<recognizer::Recognizer>,
     pub connectors: Vec<connector::Connector>,
     pub config: OrganismConfig,
-}
-
-#[derive(Deserialize, Serialize, Debug, Clone)]
-#[serde(tag = "organism")]
-#[serde(rename_all = "UPPERCASE")]
-pub struct OrganismConfig {
-    pub cumulative_fit_method: Option<String>,
-    pub energy_threshold_method: Option<String>,
-    pub energy_threshold_param: Option<usize>,
-    pub insertion_method: Option<String>,
-    pub deletion_method: Option<String>,
-    pub mutate_probability_node_mutation: Option<f64>,
-    pub mutate_probability_delete_recognizer: Option<f64>,
-    pub mutate_probability_insert_recognizer: Option<f64>,
-    pub mutate_probability_substitute_pssm: Option<f64>,
-    pub min_nodes: Option<usize>,
-    pub max_nodes: Option<usize>,
-    pub precompute: Option<bool>,
 }
 
 impl Organism {
@@ -45,6 +27,24 @@ impl Default for Organism {
             config: Default::default() 
         } 
     }
+}
+
+#[derive(Deserialize, Serialize, Debug, Clone)]
+#[serde(tag = "organism")]
+#[serde(rename_all = "UPPERCASE")]
+pub struct OrganismConfig {
+    pub cumulative_fit_method: Option<String>,
+    pub energy_threshold_method: Option<String>,
+    pub energy_threshold_param: Option<usize>,
+    pub insertion_method: Option<String>,
+    pub deletion_method: Option<String>,
+    pub mutate_probability_node_mutation: Option<f64>,
+    pub mutate_probability_delete_recognizer: Option<f64>,
+    pub mutate_probability_insert_recognizer: Option<f64>,
+    pub mutate_probability_substitute_pssm: Option<f64>,
+    pub min_nodes: Option<usize>,
+    pub max_nodes: Option<usize>,
+    pub precompute: Option<bool>,
 }
 
 impl Default for OrganismConfig {
