@@ -12,14 +12,26 @@ pub struct Connector {
 #[serde(tag = "connector")]
 #[serde(rename_all = "UPPERCASE")]
 pub struct ConnectorConfig {
-    pub mutate_probability_sigma: Option<f64>,
-    pub mutate_probability_mu: Option<f64>,
-    pub mutate_probability_swap: Option<f64>,
-    pub mutate_variance_sigma: Option<f64>,
-    pub mutate_variance_mu: Option<f64>,
-    pub sigma_mutator: Option<String>,
-    pub mu_mutator: Option<String>,
-    pub expected_seq_length: Option<usize>,
+    mutate_probability_sigma: Option<f64>,
+    mutate_probability_mu: Option<f64>,
+    mutate_probability_swap: Option<f64>,
+    mutate_variance_sigma: Option<f64>,
+    mutate_variance_mu: Option<f64>,
+    sigma_mutator: Option<String>,
+    mu_mutator: Option<String>,
+    expected_seq_length: Option<usize>,
+}
+
+impl ConnectorConfig {
+    pub fn mutate_probability_sigma(&self) -> f64 {self.mutate_probability_sigma.unwrap()}
+    pub fn mutate_probability_mu(&self) -> f64 {self.mutate_probability_mu.unwrap()}
+    pub fn mutate_probability_swap(&self) -> f64 {self.mutate_probability_swap.unwrap()}
+    pub fn mutate_variance_sigma(&self) -> f64 {self.mutate_variance_sigma.unwrap()}
+    pub fn mutate_variance_mu(&self) -> f64 {self.mutate_variance_mu.unwrap()}
+    pub fn sigma_mutator(&self) -> String {self.clone().sigma_mutator.unwrap()}
+    pub fn mu_mutator(&self) -> String {self.clone().mu_mutator.unwrap()}
+    pub fn expected_seq_length(&self) -> usize {self.expected_seq_length.unwrap()}
+
 }
 
 impl Default for ConnectorConfig {

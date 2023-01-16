@@ -33,18 +33,33 @@ impl Default for Organism {
 #[serde(tag = "organism")]
 #[serde(rename_all = "UPPERCASE")]
 pub struct OrganismConfig {
-    pub cumulative_fit_method: Option<String>,
-    pub energy_threshold_method: Option<String>,
-    pub energy_threshold_param: Option<usize>,
-    pub insertion_method: Option<String>,
-    pub deletion_method: Option<String>,
-    pub mutate_probability_node_mutation: Option<f64>,
-    pub mutate_probability_delete_recognizer: Option<f64>,
-    pub mutate_probability_insert_recognizer: Option<f64>,
-    pub mutate_probability_substitute_pssm: Option<f64>,
-    pub min_nodes: Option<usize>,
-    pub max_nodes: Option<usize>,
-    pub precompute: Option<bool>,
+    cumulative_fit_method: Option<String>,
+    energy_threshold_method: Option<String>,
+    energy_threshold_param: Option<usize>,
+    insertion_method: Option<String>,
+    deletion_method: Option<String>,
+    mutate_probability_node_mutation: Option<f64>,
+    mutate_probability_delete_recognizer: Option<f64>,
+    mutate_probability_insert_recognizer: Option<f64>,
+    mutate_probability_substitute_pssm: Option<f64>,
+    min_nodes: Option<usize>,
+    max_nodes: Option<usize>,
+    precompute: Option<bool>,
+}
+
+impl OrganismConfig {
+    pub fn cumulative_fit_method(&self) -> String{self.clone().cumulative_fit_method.unwrap()}
+    pub fn energy_threshold_method(&self) -> String{self.clone().energy_threshold_method.unwrap()}
+    pub fn energy_threshold_param(&self) -> usize{self.clone().energy_threshold_param.unwrap()}
+    pub fn insertion_method(&self) -> String{self.clone().insertion_method.unwrap()}
+    pub fn deletion_method(&self) -> String{self.clone().deletion_method.unwrap()}
+    pub fn mutate_probability_node_mutation(&self) -> f64{self.mutate_probability_node_mutation.unwrap()}
+    pub fn mutate_probability_delete_recognizer(&self) -> f64{self.mutate_probability_delete_recognizer.unwrap()}
+    pub fn mutate_probability_insert_recognizer(&self) -> f64{self.mutate_probability_insert_recognizer.unwrap()}
+    pub fn mutate_probability_substitute_pssm(&self) -> f64{self.mutate_probability_substitute_pssm.unwrap()}
+    pub fn min_nodes(&self) -> usize{self.min_nodes.unwrap()}
+    pub fn max_nodes(&self) -> usize{self.max_nodes.unwrap()}
+    pub fn precompute(&self) -> bool{self.precompute.unwrap()}
 }
 
 impl Default for OrganismConfig {
@@ -66,11 +81,11 @@ impl Default for OrganismConfig {
     }
 }
 
-pub fn build_org(recognizers: Vec<recognizer::Recognizer>, connectors: Vec<connector::Connector>) -> Organism {
+pub fn build_org(recognizers: Vec<recognizer::Recognizer>, connectors: Vec<connector::Connector>, config: Option<OrganismConfig>) -> Organism {
     Organism {
         recognizers,
         connectors,
-        config: Default::default(),
+        config: if config.is_some(){config.unwrap()}else{Default::default()},
     }
 }
 
@@ -105,21 +120,21 @@ pub fn import_org_from_value(org: Value, config: Option<(Value, Value, Value)>) 
 
     let mut scores: Vec<f64> = 
         if with_config {
-            vec![0.0; rec_conf.max_columns.unwrap() * 4]
+            vec![0.0; rec_conf.max_columns() * 4]
         }else{
             Vec::new()
         };
 
     let mut recs: Vec<recognizer::Recognizer> = 
         if with_config {
-            Vec::with_capacity(org_conf.max_nodes.unwrap() / 2 + 1)
+            Vec::with_capacity(org_conf.max_nodes() / 2 + 1)
         }else{
             Vec::new()
         };
 
     let mut conns: Vec<connector::Connector> = 
         if with_config {
-            Vec::with_capacity(org_conf.max_nodes.unwrap() / 2)
+            Vec::with_capacity(org_conf.max_nodes() / 2)
         }else{
             Vec::new()
         };
@@ -183,7 +198,7 @@ pub fn import_org_from_value(org: Value, config: Option<(Value, Value, Value)>) 
         curr_node_num += 1;
     }
      
-    build_org(recs, conns)
+    build_org(recs, conns, Some(org_conf))
 }
 
 pub fn import_org_from_json(org_file: &str, org_num: usize, conf_file: Option<&str>) -> Organism{
