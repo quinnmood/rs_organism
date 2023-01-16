@@ -2,7 +2,6 @@ pub mod recognizer;
 pub mod connector;
 use serde_json::Value;
 use serde::{Deserialize, Serialize};
-use std::result;
 use std::{fs::File, io::BufReader, error::Error};
 
 #[derive(Clone)]
@@ -75,18 +74,55 @@ pub fn build_org(recognizers: Vec<recognizer::Recognizer>, connectors: Vec<conne
     }
 }
 
-pub fn import_org_from_value(org: Value, config: (Value, Value, Value)) -> Organism  {
+pub fn import_org_from_value(org: Value, config: Option<(Value, Value, Value)>) -> Organism  {
     let num_nodes = org.as_array().expect("Organism is not an array of nodes").len();
 
     let mut curr_node_num: usize = 0;
     let mut curr_col: usize = 0;
     let mut curr_base: usize = 0;
-    let org_conf: OrganismConfig = serde_json::from_value(config.0).unwrap();
-    let rec_conf: recognizer::PssmConfig = serde_json::from_value(config.1).unwrap();
-    let con_conf: connector::ConnectorConfig = serde_json::from_value(config.2).unwrap();
-    let mut scores: Vec<f64> = vec![0.0; rec_conf.max_columns.unwrap() * 4];
-    let mut recs: Vec<recognizer::Recognizer> = Vec::with_capacity(org_conf.max_nodes.unwrap() / 2 + 1);
-    let mut conns: Vec<connector::Connector> = Vec::with_capacity(org_conf.max_nodes.unwrap() / 2);
+    let with_config: bool = config.is_some();
+
+    let org_conf: OrganismConfig = 
+        if with_config {
+            serde_json::from_value(config.clone().unwrap().0).unwrap()
+        }else{ 
+            Default::default()
+        };
+
+    let rec_conf: recognizer::PssmConfig = 
+        if with_config {
+            serde_json::from_value(config.clone().unwrap().1).unwrap()
+        }else{
+            Default::default()
+        };
+
+    let con_conf: connector::ConnectorConfig = 
+        if with_config {
+            serde_json::from_value(config.clone().unwrap().2).unwrap()
+        }else{
+            Default::default()
+        };
+
+    let mut scores: Vec<f64> = 
+        if with_config {
+            vec![0.0; rec_conf.max_columns.unwrap() * 4]
+        }else{
+            Vec::new()
+        };
+
+    let mut recs: Vec<recognizer::Recognizer> = 
+        if with_config {
+            Vec::with_capacity(org_conf.max_nodes.unwrap() / 2 + 1)
+        }else{
+            Vec::new()
+        };
+
+    let mut conns: Vec<connector::Connector> = 
+        if with_config {
+            Vec::with_capacity(org_conf.max_nodes.unwrap() / 2)
+        }else{
+            Vec::new()
+        };
 
 
     while curr_node_num < num_nodes {
@@ -99,8 +135,8 @@ pub fn import_org_from_value(org: Value, config: (Value, Value, Value)) -> Organ
         match curr_node["objectType"]
                         .as_str()
                         .unwrap(){
-            "pssm" => {
-                    
+
+            "pssm" => {            
                     let r = &curr_node["pwm"]
                                       .as_array()
                                       .unwrap();
@@ -111,7 +147,11 @@ pub fn import_org_from_value(org: Value, config: (Value, Value, Value)) -> Organ
                                   .unwrap();
 
                         for base in ["a", "c", "g", "t"] {
-                            scores[curr_col * 4 + curr_base] = r[base].as_f64().unwrap();
+                            if with_config{
+                                scores[curr_col * 4 + curr_base] = r[base].as_f64().unwrap();
+                            }else{
+                                scores.push(r[base].as_f64().unwrap());
+                            }
                             curr_base += 1;
                         }
 
@@ -120,14 +160,25 @@ pub fn import_org_from_value(org: Value, config: (Value, Value, Value)) -> Organ
                     }
 
                     curr_col = 0;
-                    recs.push(recognizer::build_rec(scores.to_owned(), 'p', r.len(), Some(rec_conf.to_owned()))); 
+                    if with_config {
+                        recs.push(recognizer::build_rec(scores.to_owned(), 'p', r.len(), Some(rec_conf.to_owned()))); 
+                    }else{
+                        recs.push(recognizer::build_rec(scores.to_owned(), 'p', r.len(), None)); 
+                    }
                 },
 
             "connector" => {
-                    conns.push(connector::build_conn(curr_node["mu"].as_f64().unwrap(), curr_node["sigma"].as_f64().unwrap(), Some(con_conf.to_owned())));
+                    if with_config {
+                        conns.push(connector::build_conn(curr_node["mu"].as_f64().unwrap(), curr_node["sigma"].as_f64().unwrap(), Some(con_conf.to_owned())));
+                    }else{
+                        conns.push(connector::build_conn(curr_node["mu"].as_f64().unwrap(), curr_node["sigma"].as_f64().unwrap(), None));
+                    }
                 },
 
             _ => println!("hi"),
+        }
+        if !with_config{
+            scores.clear();
         }
         curr_node_num += 1;
     }
@@ -135,12 +186,18 @@ pub fn import_org_from_value(org: Value, config: (Value, Value, Value)) -> Organ
     build_org(recs, conns)
 }
 
-pub fn import_org_from_json(org_file: &str, conf_file: &str, org_num: usize) -> Organism{
-    let conf_file = File::open(conf_file).unwrap();
-    let conf_reader = BufReader::new(conf_file);
-    let conf_value: Value = serde_json::from_reader(conf_reader).unwrap();
+pub fn import_org_from_json(org_file: &str, org_num: usize, conf_file: Option<&str>) -> Organism{
+     
+    let conf = if conf_file.is_some() {
+        let conf_file = File::open(conf_file.unwrap()).unwrap();
+        let conf_reader = BufReader::new(conf_file);
+        let conf_value: Value = serde_json::from_reader(conf_reader).unwrap();
+        Some((conf_value["organism"].to_owned(), conf_value["pssm"].to_owned(), conf_value["connector"].to_owned()))
+    } else {
+        None
+    };
     let org_file = File::open(org_file).unwrap();
     let org_reader = BufReader::new(org_file);
     let org_value: Value = serde_json::from_reader(org_reader).unwrap(); 
-    import_org_from_value(org_value[org_num].to_owned(), (conf_value["organism"].to_owned(), conf_value["pssm"].to_owned(), conf_value["connector"].to_owned()))
+    import_org_from_value(org_value[org_num].to_owned(), conf)
 }
