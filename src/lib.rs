@@ -2,7 +2,7 @@ pub mod recognizer;
 pub mod connector;
 use serde_json::Value;
 use serde::{Deserialize, Serialize};
-use std::{fs::File, io::BufReaderError};
+use std::{fs::File, io::BufReader};
 
 #[derive(Clone)]
 pub struct Organism {
@@ -14,7 +14,7 @@ pub struct Organism {
 impl Organism {
     pub fn print(self){
         for rec in self.recognizers {
-            rec.clone().print();        
+            rec.print();        
         }
     }
 }

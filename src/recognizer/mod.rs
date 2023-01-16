@@ -47,23 +47,14 @@ impl Default for PssmConfig {
     }
 }
 
-pub fn build_rec(mut rec_scores: Vec<f64>, mut rec_type: char, mut rec_size: usize, config: Option<PssmConfig>) -> Recognizer {
-    Recognizer {
-        rec_scores,
-        rec_type,
-        rec_size,
-        config: if config.is_some() {config.expect("Failed to set recognizer config")} else {Default::default()},
-    }
-}
-
 impl Recognizer {
-    pub fn print(self) { 
+    pub fn print(&self) { 
         println!("type: {}, size: {}", self.rec_type, self.rec_size);
         let mut i: usize = 0;
         let mut c: usize = 0;
         while i < 4 {
             while c < self.rec_size {
-                print!("|{:01.2}", self.rec_scores[c * 4 + i]);
+                print!("|{:01.2} : {:02.}", self.rec_scores[c * 4 + i], c * 4 + i);
                 c += 1;
             }
             print!("|");
@@ -73,7 +64,7 @@ impl Recognizer {
         }
     }
 
-    pub fn print_config(self) {
+    pub fn print_config(&self) {
         println!("{}", self.config.mutate_probability_random_col.unwrap());
         println!("{}", self.config.mutate_probability_mutate_col.unwrap());
         println!("{}", self.config.mutate_probability_flip_col.unwrap());
@@ -88,4 +79,55 @@ impl Recognizer {
         println!("{}", self.config.pseudo_count.unwrap());
         println!("{}", self.config.scan_reverse_complement.unwrap());
     }
+
+    pub fn set_type(&mut self, rec_type: char){
+        self.rec_type = rec_type;
+    }
+
+    pub fn set_size(&mut self, rec_size: usize){
+        self.rec_size = rec_size; 
+    }
+
+    pub fn flip_row(&mut self, row: usize){
+        for i in 0..self.rec_size/2 {
+            self.rec_scores.swap((i * 4) + row, (self.rec_size - i) * 4 - (4 - row));
+            //println!("swapping index {} and {}",(i * 4) + row,  (self.rec_size * 4) - (4 - row) - (i * 4));
+        }
+    }
+
+    pub fn flip_col(&mut self, col: usize){
+        for i in 0..2 {
+            self.rec_scores.swap(col * 4 + i, (col + 1) * 4 - 1 - i);
+            //println!("swapping index {} and {}", col * 4 + i,  (col + 1) * 4 - 1 - i);
+        }
+    }
+
+    pub fn swap_cols(&mut self, col_a: usize, col_b: usize){
+        for i in 0..4 {
+            self.rec_scores.swap(col_a * 4 + i, col_b * 4 + i)
+        }
+    }
+
+    pub fn shift_left(&mut self){
+        for i in 0..self.rec_size - 1 {
+            self.swap_cols(i, i + 1);
+        }
+    }
+    
+    pub fn shift_right(&mut self){
+        for i in self.rec_size - 1..0 {
+            self.swap_cols(i, i - 1);
+        }
+    }
 }
+
+pub fn build_rec(rec_scores: Vec<f64>, rec_type: char, rec_size: usize, config: Option<PssmConfig>) -> Recognizer {
+    Recognizer {
+        rec_scores,
+        rec_type,
+        rec_size,
+        config: if config.is_some() {config.expect("Failed to set recognizer config")} else {Default::default()},
+    }
+}
+
+
