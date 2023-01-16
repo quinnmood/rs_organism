@@ -2,7 +2,7 @@ pub mod recognizer;
 pub mod connector;
 use serde_json::Value;
 use serde::{Deserialize, Serialize};
-use std::{fs::File, io::BufReader};
+use std::{fs::File, io::BufReaderError};
 
 #[derive(Clone)]
 pub struct Organism {
