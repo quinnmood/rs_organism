@@ -75,7 +75,7 @@ pub fn build_org(recognizers: Vec<recognizer::Recognizer>, connectors: Vec<conne
     }
 }
 
-pub fn import_org_from_value(org: Value, config: (Value, Value, Value)) -> result::Result<Organism, Box<dyn Error>>  {
+pub fn import_org_from_value(org: Value, config: (Value, Value, Value)) -> Organism  {
     let num_nodes = org.as_array().expect("Organism is not an array of nodes").len();
 
     let mut curr_node_num: usize = 0;
@@ -132,16 +132,15 @@ pub fn import_org_from_value(org: Value, config: (Value, Value, Value)) -> resul
         curr_node_num += 1;
     }
      
-    let org: Organism = build_org(recs, conns);
-    Ok(org)
+    build_org(recs, conns)
 }
 
-pub fn import_org_from_json(org_file: &str, conf_file: &str, org_num: usize) -> result::Result<Organism, Box<dyn Error>>{
+pub fn import_org_from_json(org_file: &str, conf_file: &str, org_num: usize) -> Organism{
     let conf_file = File::open(conf_file).unwrap();
     let conf_reader = BufReader::new(conf_file);
     let conf_value: Value = serde_json::from_reader(conf_reader).unwrap();
     let org_file = File::open(org_file).unwrap();
     let org_reader = BufReader::new(org_file);
     let org_value: Value = serde_json::from_reader(org_reader).unwrap(); 
-    Ok(import_org_from_value(org_value[org_num].to_owned(), (conf_value["organism"].to_owned(), conf_value["pssm"].to_owned(), conf_value["connector"].to_owned())).unwrap())
+    import_org_from_value(org_value[org_num].to_owned(), (conf_value["organism"].to_owned(), conf_value["pssm"].to_owned(), conf_value["connector"].to_owned()))
 }
