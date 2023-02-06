@@ -3,7 +3,7 @@ pub mod placement;
 pub mod recognizer;
 use serde::{Deserialize, Serialize};
 use serde_json::Value;
-use std::{fs::File, io::BufReader};
+use std::{fs::File, io::BufReader, error::Error};
 
 #[derive(Clone, Debug, Default)]
 pub struct Organism {
@@ -28,7 +28,7 @@ impl Organism {
     }
 }
 
-#[derive(Deserialize, Serialize, Defualt, Debug, Clone)]
+#[derive(Deserialize, Serialize, Default, Debug, Clone)]
 #[serde(tag = "organism")]
 #[serde(rename_all = "UPPERCASE")]
 pub struct OrganismConfig {
@@ -85,28 +85,28 @@ impl OrganismConfig {
     }
 }
 
-pub fn build_org(
-    recognizers: Vec<recognizer::Recognizer>,
-    connectors: Vec<connector::Connector>,
-    id: Option<u8>,
-    config: Option<OrganismConfig>,
-) -> Organism {
-    Organism {
-        recognizers,
-        connectors,
-        id: if id.is_some() {
-            id.unwrap()
-        } else {
-            Default::default()
-        },
-        config: if config.is_some() {
-            config.unwrap()
-        } else {
-            Default::default()
-        },
-    }
-}
+pub fn from_value(org: &Value, org_conf: &OrganismConfig, rec_conf: &recognizer::RecognizerConfig, con_conf: &connector::ConnectorConfig) -> Option<Organism>{
+    let nodes = org.as_array()?;
+    let num_nodes = nodes.len();
+    let mut recognizers: Vec<recognizer::Recognizer> = Vec::new();
+    let mut connectors: Vec<connector::Connector> = Vec::new();
+        
+    for i in 0..num_nodes{
+        let curr_node = &nodes[i].as_object()?;
+        match curr_node["objectType"].as_str()? {
 
+            //let r = &curr_node["pwm"].as_array().unwrap();
+            "pssm" => recognizers.push(recognizer::pssm_from_value(&curr_node["pwm"], Some(rec_conf))?),
+            "connector" => connectors.push(connector::from_value(*curr_node, Some(con_conf))?),
+            "shape" => break,
+            _ => break,
+        }
+        //match curr_node["objectType"].as_str().unwrap() 
+    }
+
+    todo!()
+}
+/*
 pub fn import_org_from_value(org: Value, config: Option<(Value, Value, Value)>) -> Organism {
     let num_nodes = org
         .as_array()
@@ -221,22 +221,28 @@ pub fn import_org_from_value(org: Value, config: Option<(Value, Value, Value)>) 
 
     build_org(recs, conns, None, Some(org_conf))
 }
+*/
 
 pub fn import_org_from_json(org_file: &str, org_num: usize, conf_file: Option<&str>) -> Organism {
     let conf = if conf_file.is_some() {
         let conf_file = File::open(conf_file.unwrap()).unwrap();
         let conf_reader = BufReader::new(conf_file);
         let conf_value: Value = serde_json::from_reader(conf_reader).unwrap();
-        Some((
-            conf_value["organism"].to_owned(),
-            conf_value["pssm"].to_owned(),
-            conf_value["connector"].to_owned(),
-        ))
+        let org_conf: OrganismConfig = serde_json::from_value(conf_value["organism"].clone()).unwrap();    
+        let rec_conf: recognizer::RecognizerConfig = serde_json::from_value(conf_value["recognizer"].clone()).unwrap();    
+        let con_conf: connector::ConnectorConfig = serde_json::from_value(conf_value["connector"].clone()).unwrap();    
+        //Some((conf_value["organism"].to_owned(), conf_value["pssm"].to_owned(), conf_value["connector"].to_owned()))
+        Some((org_conf, rec_conf, con_conf))
     } else {
         None
     };
     let org_file = File::open(org_file).unwrap();
     let org_reader = BufReader::new(org_file);
     let org_value: Value = serde_json::from_reader(org_reader).unwrap();
-    import_org_from_value(org_value[org_num].to_owned(), conf)
+    let conf = conf.unwrap();
+
+
+    
+    //let org_conf: OrganismConfig = serde_json::from_value(config.clone().unwrap().0).unwrap()    
+    from_value(&org_value[org_num], &conf.0, &conf.1, &conf.2).unwrap()
 }

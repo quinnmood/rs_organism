@@ -1,4 +1,8 @@
+use serde_json::Value;
 use serde::{Deserialize, Serialize};
+
+const BASES: [&str; 4] = ["a", "c", "g", "t"];
+
 #[derive(Default, Copy, Clone, Debug)]
 pub enum ShapeFeat {
     #[default]
@@ -15,7 +19,7 @@ pub enum RecognizerFeat {
     Shape(ShapeFeat),
 }
 
-#[derive(Clone)]
+#[derive(Default, Debug, Clone)]
 pub struct Recognizer {
     feat: RecognizerFeat,
     len: usize,
@@ -24,14 +28,27 @@ pub struct Recognizer {
     sigma: Option<f64>,
     null: Option<Vec<(f64, f64, f64)>>,
     alt: Option<Vec<(f64, f64, f64)>>,
-    config: Option<PssmConfig>,
+    config: Option<RecognizerConfig>,
 }
 
 impl Recognizer {
+
+    pub fn matrix(&self) -> &Vec<[f64; 4]>{
+        self.matrix.as_ref().unwrap()
+    }
+
+    pub fn matrix_mut(&mut self) -> &mut Vec<[f64; 4]>{
+        self.matrix.as_mut().unwrap()
+    }
+
+    pub fn print(&self) {
+        
+    }
+
     pub fn flip_row(&mut self, row: usize) {
         /*
-        for i in 0..self.rec_size/2 {
-            self.rec_scores.swap((i * 4) + row, (self.rec_size - i) * 4 - (4 - row));
+        for i in 0..self.len/2 {
+            self.matrix.swap((i * 4) + row, (self.len - i) * 4 - (4 - row));
         }
         */
     }
@@ -39,25 +56,26 @@ impl Recognizer {
     pub fn flip_col(&mut self, col: usize) {
         /*
         for i in 0..2 {
-            self.rec_scores.swap(col * 4 + i, (col + 1) * 4 - 1 - i);
+            self.matrix.swap(col * 4 + i, (col + 1) * 4 - 1 - i);
         }
         */
     }
 
     pub fn swap_cols(&mut self, col_a: usize, col_b: usize) {
         for i in 0..4 {
-            self.rec_scores.swap(col_a * 4 + i, col_b * 4 + i)
+            self.matrix_mut()
+    .swap(col_a * 4 + i, col_b * 4 + i)
         }
     }
 
     pub fn shift_left(&mut self) {
-        for i in 0..self.rec_size - 1 {
+        for i in 0..self.len - 1 {
             self.swap_cols(i, i + 1);
         }
     }
 
     pub fn shift_right(&mut self) {
-        for i in self.rec_size - 1..0 {
+        for i in self.len - 1..0 {
             self.swap_cols(i, i - 1);
         }
     }
@@ -136,10 +154,26 @@ impl RecognizerConfig {
     }
 }
 
+pub fn pssm_from_value(rec: &Value, conf: Option<&RecognizerConfig>) -> Option<Recognizer> {
+    let rec = rec.as_array()?;
+    let len = rec.len();
+    let mut matrix: Vec<[f64; 4]> = vec![[0.00; 4]; len];
+    for i in 0..len{
+        let col = &rec[i].as_object()?;
+        for j in 0..BASES.len() {
+            matrix[i][j] = col[BASES[j]].as_f64()?;
+        }
+        
+    }
+    Some(pssm(RecognizerFeat::Sequence, len, Some(matrix), conf.cloned()))
+}
+
+
+
 pub fn pssm(
     feat: RecognizerFeat,
     len: usize,
-    matrix: Vec<[f64; 4]>,
+    matrix: Option<Vec<[f64; 4]>>,
     config: Option<RecognizerConfig>,
 ) -> Recognizer {
     Recognizer {
@@ -150,10 +184,7 @@ pub fn pssm(
         sigma: None,
         null: None,
         alt: None,
-        config: if config.is_some() {
-            config.expect("Failed to set recognizer config")
-        } else {
-            Default::default()
-        },
+        config,
+        
     }
 }

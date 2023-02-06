@@ -60,7 +60,7 @@
     "MU_MUTATOR": "standard",
     "EXPECTED_SEQ_LENGTH": 200
   },
-  "pssm": {
+  "recognizer": {
     "MUTATE_PROBABILITY_RANDOM_COL": 0.075,
     "MUTATE_PROBABILITY_MUTATE_COL": 0.35,
     "MUTATE_PROBABILITY_FLIP_COL": 0.15,

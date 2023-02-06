@@ -1,10 +1,11 @@
+use serde_json::Value;
 use serde::{Deserialize, Serialize};
 
-#[derive(Clone)]
+#[derive(Default, Debug, Clone)]
 pub struct Connector {
     pub mu: f64,
     pub sigma: f64,
-    pub conn_scores: Vec<f64>,
+    pub con_scores: Vec<f64>,
     pub conf: ConnectorConfig,
 }
 
@@ -64,11 +65,16 @@ impl Default for ConnectorConfig {
     }
 }
 
+pub fn from_value(con: &Value, conf: Option<&ConnectorConfig>) -> Option<Connector> {
+    println!("{:#?}", con);
+    todo!()    
+}
+
 pub fn build_conn(mu: f64, sigma: f64, conf: Option<ConnectorConfig>) -> Connector {
     Connector {
         mu,
         sigma,
-        conn_scores: Vec::new(),
+        con_scores: Vec::new(),
         conf: if conf.is_some() {
             conf.expect("Failed to set connector config")
         } else {
