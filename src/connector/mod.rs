@@ -23,15 +23,30 @@ pub struct ConnectorConfig {
 }
 
 impl ConnectorConfig {
-    pub fn mutate_probability_sigma(&self) -> f64 {self.mutate_probability_sigma.unwrap()}
-    pub fn mutate_probability_mu(&self) -> f64 {self.mutate_probability_mu.unwrap()}
-    pub fn mutate_probability_swap(&self) -> f64 {self.mutate_probability_swap.unwrap()}
-    pub fn mutate_variance_sigma(&self) -> f64 {self.mutate_variance_sigma.unwrap()}
-    pub fn mutate_variance_mu(&self) -> f64 {self.mutate_variance_mu.unwrap()}
-    pub fn sigma_mutator(&self) -> String {self.clone().sigma_mutator.unwrap()}
-    pub fn mu_mutator(&self) -> String {self.clone().mu_mutator.unwrap()}
-    pub fn expected_seq_length(&self) -> usize {self.expected_seq_length.unwrap()}
-
+    pub fn mutate_probability_sigma(&self) -> f64 {
+        self.mutate_probability_sigma.unwrap()
+    }
+    pub fn mutate_probability_mu(&self) -> f64 {
+        self.mutate_probability_mu.unwrap()
+    }
+    pub fn mutate_probability_swap(&self) -> f64 {
+        self.mutate_probability_swap.unwrap()
+    }
+    pub fn mutate_variance_sigma(&self) -> f64 {
+        self.mutate_variance_sigma.unwrap()
+    }
+    pub fn mutate_variance_mu(&self) -> f64 {
+        self.mutate_variance_mu.unwrap()
+    }
+    pub fn sigma_mutator(&self) -> String {
+        self.clone().sigma_mutator.unwrap()
+    }
+    pub fn mu_mutator(&self) -> String {
+        self.clone().mu_mutator.unwrap()
+    }
+    pub fn expected_seq_length(&self) -> usize {
+        self.expected_seq_length.unwrap()
+    }
 }
 
 impl Default for ConnectorConfig {
@@ -54,8 +69,10 @@ pub fn build_conn(mu: f64, sigma: f64, conf: Option<ConnectorConfig>) -> Connect
         mu,
         sigma,
         conn_scores: Vec::new(),
-        conf: if conf.is_some() { conf.expect("Failed to set connector config") } else { Default::default() },
+        conf: if conf.is_some() {
+            conf.expect("Failed to set connector config")
+        } else {
+            Default::default()
+        },
     }
 }
-
-
