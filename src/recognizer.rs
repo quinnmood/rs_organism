@@ -1,5 +1,6 @@
 use serde::{Deserialize, Serialize};
 use serde_json::Value;
+use crate::config::RecognizerConfig;
 
 const BASES: [&str; 4] = ["a", "c", "g", "t"];
 
@@ -147,79 +148,6 @@ impl Recognizer {
         for i in len - 1..0 {
             self.swap_cols(i, i - 1);
         }
-    }
-}
-
-#[derive(Deserialize, Serialize, Debug, Default, Clone)]
-#[serde(tag = "recognizer")]
-#[serde(rename_all = "UPPERCASE")]
-pub struct RecognizerConfig {
-    mutate_probability_random_col: f64,
-    mutate_probability_mutate_col: f64,
-    mutate_probability_flip_col: f64,
-    mutate_probability_flip_row: f64,
-    mutate_probability_shift_left: f64,
-    mutate_probability_shift_right: f64,
-    mutate_probability_increase_pwm: f64,
-    mutate_probability_decrease_pwm: f64,
-    min_columns: usize,
-    max_columns: usize,
-    upper_print_probability: f64,
-    pseudo_count: f64,
-    scan_reverse_complement: bool,
-}
-
-impl RecognizerConfig {
-    pub fn mutate_probability_random_col(&self) -> f64 {
-        self.mutate_probability_random_col
-    }
-
-    pub fn mutate_probability_mutate_col(&self) -> f64 {
-        self.mutate_probability_mutate_col
-    }
-
-    pub fn mutate_probability_flip_col(&self) -> f64 {
-        self.mutate_probability_flip_col
-    }
-
-    pub fn mutate_probability_flip_row(&self) -> f64 {
-        self.mutate_probability_flip_row
-    }
-
-    pub fn mutate_probability_shift_left(&self) -> f64 {
-        self.mutate_probability_shift_left
-    }
-
-    pub fn mutate_probability_shift_right(&self) -> f64 {
-        self.mutate_probability_shift_right
-    }
-
-    pub fn mutate_probability_increase_pwm(&self) -> f64 {
-        self.mutate_probability_increase_pwm
-    }
-
-    pub fn mutate_probability_decrease_pwm(&self) -> f64 {
-        self.mutate_probability_decrease_pwm
-    }
-
-    pub fn min_columns(&self) -> usize {
-        self.min_columns
-    }
-
-    pub fn max_columns(&self) -> usize {
-        self.max_columns
-    }
-
-    pub fn upper_print_probability(&self) -> f64 {
-        self.upper_print_probability
-    }
-
-    pub fn pseudo_count(&self) -> f64 {
-        self.pseudo_count
-    }
-
-    pub fn scan_reverse_complement(&self) -> bool {
-        self.scan_reverse_complement
     }
 }
 

@@ -1,6 +1,12 @@
-pub mod connector;
-pub mod placement;
-pub mod recognizer;
+mod connector;
+mod placement;
+mod recognizer;
+mod config;
+use crate::recognizer::Recognizer;
+use crate::connector::Connector;
+use crate::config::OrganismConfig;
+use crate::config::RecognizerConfig;
+use crate::config::ConnectorConfig;
 use serde::{Deserialize, Serialize};
 use serde_json::Value;
 use std::{fs, io, cell};
@@ -116,74 +122,17 @@ impl Organism {
 
 }
 
-#[derive(Deserialize, Serialize, Default, Debug, Clone)]
-#[serde(tag = "organism")]
-#[serde(rename_all = "UPPERCASE")]
-pub struct OrganismConfig {
-    cumulative_fit_method: String,
-    energy_threshold_method: String,
-    energy_threshold_param: usize,
-    insertion_method: String,
-    deletion_method: String,
-    mutate_probability_node_mutation: f64,
-    mutate_probability_delete_recognizer: f64,
-    mutate_probability_insert_recognizer: f64,
-    mutate_probability_substitute_pssm: f64,
-    min_nodes: usize,
-    max_nodes: usize,
-    precompute: bool,
-}
-
-impl OrganismConfig {
-    pub fn cumulative_fit_method(&self) -> &str {
-        &self.cumulative_fit_method
-    }
-    pub fn energy_threshold_method(&self) -> &str {
-        &self.energy_threshold_method
-    }
-    pub fn energy_threshold_param(&self) -> usize {
-        self.clone().energy_threshold_param
-    }
-    pub fn insertion_method(&self) -> &str {
-        &self.insertion_method
-    }
-    pub fn deletion_method(&self) -> &str {
-        &self.deletion_method
-    }
-    pub fn mutate_probability_node_mutation(&self) -> f64 {
-        self.mutate_probability_node_mutation
-    }
-    pub fn mutate_probability_delete_recognizer(&self) -> f64 {
-        self.mutate_probability_delete_recognizer
-    }
-    pub fn mutate_probability_insert_recognizer(&self) -> f64 {
-        self.mutate_probability_insert_recognizer
-    }
-    pub fn mutate_probability_substitute_pssm(&self) -> f64 {
-        self.mutate_probability_substitute_pssm
-    }
-    pub fn min_nodes(&self) -> usize {
-        self.min_nodes
-    }
-    pub fn max_nodes(&self) -> usize {
-        self.max_nodes
-    }
-    pub fn precompute(&self) -> bool {
-        self.precompute
-    }
-}
-
 pub fn from_value(
     org: &Value,
     org_conf: Option<&OrganismConfig>,
-    rec_conf: Option<&recognizer::RecognizerConfig>,
-    con_conf: Option<&connector::ConnectorConfig>,
+    rec_conf: Option<&RecognizerConfig>,
+    con_conf: Option<&ConnectorConfig>,
 ) -> Result<Organism, OrganismError> {
 
     let nodes = org.as_array().unwrap();
     let num_nodes = nodes.len();
-    let mut recognizers: Vec<cell::RefCell<recognizer::Recognizer>> = Vec::new();
-    let mut connectors: Vec<cell::RefCell<connector::Connector>> = Vec::new();
+    let mut recognizers: Vec<cell::RefCell<Recognizer>> = Vec::new();
+    let mut connectors: Vec<cell::RefCell<Connector>> = Vec::new();
 
     for i in 0..num_nodes {
         match nodes[i].as_object().unwrap()["objectType"]
@@ -233,9 +182,9 @@ pub fn from_json(
             let conf_reader = io::BufReader::new(conf_file);
             let conf_value: Value = serde_json::from_reader(conf_reader)?;
             let org_conf: OrganismConfig = serde_json::from_value(conf_value["organism"].clone())?;
-            let rec_conf: recognizer::RecognizerConfig =
+            let rec_conf: RecognizerConfig =
                 serde_json::from_value(conf_value["recognizer"].clone())?;
-            let con_conf: connector::ConnectorConfig =
+            let con_conf: ConnectorConfig =
                 serde_json::from_value(conf_value["connector"].clone())?;
             Ok(from_value(
                 &org_value[org_num],
@@ -274,9 +223,9 @@ pub fn from_json_list(
             let conf_reader = io::BufReader::new(conf_file);
             let conf_value: Value = serde_json::from_reader(conf_reader)?;
             let org_conf: OrganismConfig = serde_json::from_value(conf_value["organism"].clone())?;
-            let rec_conf: recognizer::RecognizerConfig =
+            let rec_conf: RecognizerConfig =
                 serde_json::from_value(conf_value["recognizer"].clone())?;
-            let con_conf: connector::ConnectorConfig =
+            let con_conf: ConnectorConfig =
                 serde_json::from_value(conf_value["connector"].clone())?;
             for i in 0..num_orgs {
                 orgs.push(from_value(

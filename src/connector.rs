@@ -1,3 +1,4 @@
+use crate::config::ConnectorConfig;
 use serde::{Deserialize, Serialize};
 use serde_json::Value;
 use thiserror;
@@ -57,46 +58,6 @@ impl Connector {
 
 }
 
-#[derive(Deserialize, Serialize, Debug, Clone)]
-#[serde(tag = "connector")]
-#[serde(rename_all = "UPPERCASE")]
-pub struct ConnectorConfig {
-    mutate_probability_sigma: f64,
-    mutate_probability_mu: f64,
-    mutate_probability_swap: f64,
-    mutate_variance_sigma: f64,
-    mutate_variance_mu: f64,
-    sigma_mutator: String,
-    mu_mutator: String,
-    expected_seq_length: usize,
-}
-
-impl ConnectorConfig {
-    pub fn mutate_probability_sigma(&self) -> f64 {
-        self.mutate_probability_sigma
-    }
-    pub fn mutate_probability_mu(&self) -> f64 {
-        self.mutate_probability_mu
-    }
-    pub fn mutate_probability_swap(&self) -> f64 {
-        self.mutate_probability_swap
-    }
-    pub fn mutate_variance_sigma(&self) -> f64 {
-        self.mutate_variance_sigma
-    }
-    pub fn mutate_variance_mu(&self) -> f64 {
-        self.mutate_variance_mu
-    }
-    pub fn sigma_mutator(&self) -> &str {
-        &self.sigma_mutator
-    }
-    pub fn mu_mutator(&self) -> &str {
-        &self.mu_mutator
-    }
-    pub fn expected_seq_length(&self) -> usize {
-        self.expected_seq_length
-    }
-}
 
 pub fn from_value(con: &Value, config: Option<&ConnectorConfig>) -> Result<Connector, ConnectorError> {
     let con = con.as_object().ok_or_else(|| ConnectorError::ParseJSONError(serde::de::Error::invalid_type( serde::de::Unexpected::Option, &"hi")))?;
