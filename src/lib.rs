@@ -3,29 +3,117 @@ pub mod placement;
 pub mod recognizer;
 use serde::{Deserialize, Serialize};
 use serde_json::Value;
-use std::{fs::File, io::BufReader, error::Error};
+use std::{fs, io, cell};
+use thiserror;
+
+#[derive(thiserror::Error, Debug)]
+pub enum OrganismError {
+    #[error("failed to load organism")]
+    LoadOrganismError,
+    #[error("failed to parse organism or config from json file")]
+    ParseJSONError(#[from] serde_json::Error),
+    #[error("failed to open organism or config file")]
+    IOError(#[from] std::io::Error),
+    #[error("failed to parse recognizer object")]
+    RecognizerError(#[from] recognizer::RecognizerError),
+    #[error("failed to parse connector object")]
+    ConnectorError(#[from] connector::ConnectorError),
+}
+
 
 #[derive(Clone, Debug, Default)]
 pub struct Organism {
-    pub recognizers: Vec<recognizer::Recognizer>,
-    pub connectors: Vec<connector::Connector>,
-    pub id: Option<usize>,
-    pub config: Option<OrganismConfig>,
+    recognizers: Vec<cell::RefCell<recognizer::Recognizer>>,
+    connectors: Vec<cell::RefCell<connector::Connector>>,
+    id: Option<usize>,
+    config: Option<OrganismConfig>,
 }
 
 impl Organism {
+    pub fn recs(&self) -> &Vec<cell::RefCell<recognizer::Recognizer>> {
+        &self.recognizers
+    }
+
+    pub fn cons(&self) -> &Vec<cell::RefCell<connector::Connector>> {
+        &self.connectors
+    }
+
+    pub fn id(&self) -> usize {
+        self.id.expect("organism does not have an id")
+    }
+
+    pub fn config(&self) -> &OrganismConfig {
+        self.config.as_ref().expect("organism does not have a config")
+    }
+
+    pub fn len(&self) -> usize {
+        self.recognizers.len() + self.connectors.len()        
+    }
+
+    pub fn num_recs(&self) -> usize {
+        self.recognizers.len()
+    }
+
+    pub fn num_cons(&self) -> usize {
+        self.connectors.len()
+    }
+
+    pub fn len_recs(&self) -> usize {
+        let mut sum: usize = 0;
+        for i in 0..self.recognizers.len() {
+            sum += &self.recognizers[i].borrow().len()
+        }
+        sum
+    }
+
+    pub fn rec_at(&self, index: usize) -> &cell::RefCell<recognizer::Recognizer> {
+        &self.recognizers[index]
+    }
+
+    pub fn rec_at_mut(&mut self, index: usize) -> &mut cell::RefCell<recognizer::Recognizer> {
+        &mut self.recognizers[index]
+    }
+
+    pub fn con_at(&self, index: usize) -> &cell::RefCell<connector::Connector> {
+        &self.connectors[index]
+    }
+
+    pub fn con_at_mut(&mut self, index: usize) -> &mut cell::RefCell<connector::Connector> {
+        &mut self.connectors[index]
+    }
+
+    pub fn swap_rec(&mut self, rec_a: usize, rec_b: usize) {
+        self.recognizers.swap(rec_a, rec_b);
+    }
+
+    pub fn swap_con(&mut self, con_a: usize, con_b: usize) {
+        self.recognizers.swap(con_a, con_b);
+    }
+
     pub fn print(&self) {
-        for rec in self.recognizers.clone() {
-            rec.print();
+        let len = self.num_recs();
+        for i in 0..4 {
+            for j in 0..len {
+                let rec = self.recognizers[j].borrow();
+                let rec_len = rec.len();
+                let matrix = rec.matrix();
+                for k in 0..rec_len {
+                    print!("|{:1.2}", matrix[k * 4 + i])
+                }
+
+                if i == 0  && j < len - 1{
+                    let con = self.connectors[j].borrow();
+                    let mu = con.mu();
+                    let sigma = con.sigma();
+                    print!("|--<{:2.2}, {:2.2}>--", mu, sigma);
+                }else{
+                    print!("|                 ");
+                }
+            }
+            println!("");       
         }
     }
 
-    pub fn mutate(&self) {}
-
-    pub fn place(&self, sequence: String) -> placement::Placement {
-        let placemen: placement::Placement = Default::default();
-        todo!()
-    }
 }
 
 #[derive(Deserialize, Serialize, Default, Debug, Clone)]
@@ -47,20 +135,20 @@ pub struct OrganismConfig {
 }
 
 impl OrganismConfig {
-    pub fn cumulative_fit_method(&self) -> String {
-        self.clone().cumulative_fit_method
+    pub fn cumulative_fit_method(&self) -> &str {
+        &self.cumulative_fit_method
     }
-    pub fn energy_threshold_method(&self) -> String {
-        self.clone().energy_threshold_method
+    pub fn energy_threshold_method(&self) -> &str {
+        &self.energy_threshold_method
     }
     pub fn energy_threshold_param(&self) -> usize {
         self.clone().energy_threshold_param
     }
-    pub fn insertion_method(&self) -> String {
-        self.clone().insertion_method
+    pub fn insertion_method(&self) -> &str {
+        &self.insertion_method
     }
-    pub fn deletion_method(&self) -> String {
-        self.clone().deletion_method
+    pub fn deletion_method(&self) -> &str {
+        &self.deletion_method
     }
     pub fn mutate_probability_node_mutation(&self) -> f64 {
         self.mutate_probability_node_mutation
@@ -85,164 +173,126 @@ impl OrganismConfig {
     }
 }
 
-pub fn from_value(org: &Value, org_conf: &OrganismConfig, rec_conf: &recognizer::RecognizerConfig, con_conf: &connector::ConnectorConfig) -> Option<Organism>{
-    let nodes = org.as_array()?;
-    let num_nodes = nodes.len();
-    let mut recognizers: Vec<recognizer::Recognizer> = Vec::new();
-    let mut connectors: Vec<connector::Connector> = Vec::new();
-        
-    for i in 0..num_nodes{
-        let curr_node = &nodes[i].as_object()?;
-        match curr_node["objectType"].as_str()? {
+pub fn from_value(
+    org: &Value,
+    org_conf: Option<&OrganismConfig>,
+    rec_conf: Option<&recognizer::RecognizerConfig>,
+    con_conf: Option<&connector::ConnectorConfig>,
+) -> Result<Organism, OrganismError> {
 
-            //let r = &curr_node["pwm"].as_array().unwrap();
-            "pssm" => recognizers.push(recognizer::pssm_from_value(&curr_node["pwm"], Some(rec_conf))?),
-            "connector" => connectors.push(connector::from_value(*curr_node, Some(con_conf))?),
+    let nodes = org.as_array().unwrap();
+    let num_nodes = nodes.len();
+    let mut recognizers: Vec<cell::RefCell<recognizer::Recognizer>> = Vec::new();
+    let mut connectors: Vec<cell::RefCell<connector::Connector>> = Vec::new();
+
+    for i in 0..num_nodes {
+        match nodes[i].as_object().unwrap()["objectType"]
+            .as_str()
+            .unwrap()
+        {
+            "pssm" => recognizers.push(cell::RefCell::new(recognizer::from_value(&nodes[i], rec_conf)?)),
+            "connector" => connectors.push(cell::RefCell::new(connector::from_value(&nodes[i], con_conf)?)),
             "shape" => break,
             _ => break,
         }
-        //match curr_node["objectType"].as_str().unwrap() 
     }
 
-    todo!()
+    Ok(organism(recognizers, connectors, None, org_conf.cloned()))
 }
-/*
-pub fn import_org_from_value(org: Value, config: Option<(Value, Value, Value)>) -> Organism {
-    let num_nodes = org
+
+pub fn organism(
+    recognizers: Vec<cell::RefCell<recognizer::Recognizer>>,
+    connectors: Vec<cell::RefCell<connector::Connector>>,
+    id: Option<usize>,
+    config: Option<OrganismConfig>,
+) -> Organism {
+
+    Organism {
+        recognizers,
+        connectors,
+        id,
+        config,
+    }
+}
+
+pub fn from_json(
+    org_file: &str,
+    org_num: usize,
+    conf_file: Option<&str>,
+) -> Result<Organism, OrganismError> {
+
+    let org_file = fs::File::open(org_file)?;
+    let org_reader = io::BufReader::new(org_file);
+    let org_value: Value = serde_json::from_reader(org_reader)?;
+
+    match conf_file.is_some() {
+        true => {
+            let conf_file = fs::File::open(conf_file.ok_or_else(||
+                OrganismError::IOError(io::Error::new(io::ErrorKind::NotFound, "oh no"))
+            )?)?;
+            let conf_reader = io::BufReader::new(conf_file);
+            let conf_value: Value = serde_json::from_reader(conf_reader)?;
+            let org_conf: OrganismConfig = serde_json::from_value(conf_value["organism"].clone())?;
+            let rec_conf: recognizer::RecognizerConfig =
+                serde_json::from_value(conf_value["recognizer"].clone())?;
+            let con_conf: connector::ConnectorConfig =
+                serde_json::from_value(conf_value["connector"].clone())?;
+            Ok(from_value(
+                &org_value[org_num],
+                Some(&org_conf),
+                Some(&rec_conf),
+                Some(&con_conf),
+            )?)
+        }
+        false => Ok(from_value(&org_value[org_num], None, None, None)?),
+    }
+}
+
+pub fn from_json_list(
+    org_file: &str,
+    conf_file: Option<&str>,
+) -> Result<Vec<Organism>, OrganismError> {
+
+    let org_file = fs::File::open(org_file)?;
+    let org_reader = io::BufReader::new(org_file);
+    let org_value: Value = serde_json::from_reader(org_reader)?;
+    let num_orgs: usize = org_value
         .as_array()
-        .expect("Organism is not an array of nodes")
+        .ok_or_else(|| {
+            OrganismError::ParseJSONError(serde::de::Error::invalid_type(
+                serde::de::Unexpected::Option,
+                &"hi",
+            ))
+        })?
         .len();
-
-    let mut curr_node_num: usize = 0;
-    let mut curr_col: usize = 0;
-    let mut curr_base: usize = 0;
-    let with_config: bool = config.is_some();
-
-    let org_conf: OrganismConfig = if with_config {
-        serde_json::from_value(config.clone().unwrap().0).unwrap()
-    } else {
-        Default::default()
-    };
-
-    let rec_conf: recognizer::PssmConfig = if with_config {
-        serde_json::from_value(config.clone().unwrap().1).unwrap()
-    } else {
-        Default::default()
-    };
-
-    let con_conf: connector::ConnectorConfig = if with_config {
-        serde_json::from_value(config.clone().unwrap().2).unwrap()
-    } else {
-        Default::default()
-    };
-
-    let mut scores: Vec<[f64; 4]> = if with_config {
-        vec![0.0; rec_conf.max_columns()]
-    } else {
-        Vec::new()
-    };
-
-    let mut recs: Vec<recognizer::Recognizer> = if with_config {
-        Vec::with_capacity(org_conf.max_nodes() / 2 + 1)
-    } else {
-        Vec::new()
-    };
-
-    let mut conns: Vec<connector::Connector> = if with_config {
-        Vec::with_capacity(org_conf.max_nodes() / 2)
-    } else {
-        Vec::new()
-    };
-
-    while curr_node_num < num_nodes {
-        let curr_node = &org.as_array().unwrap()[curr_node_num].as_object().unwrap();
-
-        match curr_node["objectType"].as_str().unwrap() {
-            "pssm" => {
-                let r = &curr_node["pwm"].as_array().unwrap();
-
-                while curr_col < r.len() {
-                    let r = &r[curr_col].as_object().unwrap();
-
-                    for base in ["a", "c", "g", "t"] {
-                        if with_config {
-                            scores[curr_col][curr_base] = r[base].as_f64().unwrap();
-                        } else {
-                            scores.push(r[base].as_f64().unwrap());
-                        }
-                        curr_base += 1;
-                    }
-
-                    curr_base = 0;
-                    curr_col += 1;
-                }
-
-                curr_col = 0;
-                if with_config {
-                    recs.push(recognizer::pssm(
-                        scores.to_owned(),
-                        recognzier::RecognizerType::Sequence,
-                        r.len(),
-                        Some(rec_conf.to_owned()),
-                    ));
-                } else {
-                    recs.push(recognizer::pssm(
-                        scores.to_owned(),
-                        recognzier::RecognizerType::Sequence,
-                        r.len(),
-                        None,
-                    ));
-                }
+    let mut orgs: Vec<Organism> = Vec::with_capacity(num_orgs);
+    match conf_file.is_some() {
+        true => {
+            let conf_file = fs::File::open(conf_file.ok_or_else(|| {
+                OrganismError::IOError(io::Error::new(io::ErrorKind::NotFound, "oh no"))
+            })?)?;
+            let conf_reader = io::BufReader::new(conf_file);
+            let conf_value: Value = serde_json::from_reader(conf_reader)?;
+            let org_conf: OrganismConfig = serde_json::from_value(conf_value["organism"].clone())?;
+            let rec_conf: recognizer::RecognizerConfig =
+                serde_json::from_value(conf_value["recognizer"].clone())?;
+            let con_conf: connector::ConnectorConfig =
+                serde_json::from_value(conf_value["connector"].clone())?;
+            for i in 0..num_orgs {
+                orgs.push(from_value(
+                    &org_value[i],
+                    Some(&org_conf),
+                    Some(&rec_conf),
+                    Some(&con_conf),
+                )?);
             }
-
-            "connector" => {
-                if with_config {
-                    conns.push(connector::build_conn(
-                        curr_node["mu"].as_f64().unwrap(),
-                        curr_node["sigma"].as_f64().unwrap(),
-                        Some(con_conf.to_owned()),
-                    ));
-                } else {
-                    conns.push(connector::build_conn(
-                        curr_node["mu"].as_f64().unwrap(),
-                        curr_node["sigma"].as_f64().unwrap(),
-                        None,
-                    ));
-                }
+        }
+        false => {
+            for i in 0..num_orgs {
+                orgs.push(from_value(&org_value[i], None, None, None)?);
             }
-
-            _ => println!("hi"),
         }
-        if !with_config {
-            scores.clear();
-        }
-        curr_node_num += 1;
     }
-
-    build_org(recs, conns, None, Some(org_conf))
+    Ok(orgs)
 }
-*/
 
-pub fn import_org_from_json(org_file: &str, org_num: usize, conf_file: Option<&str>) -> Organism {
-    let conf = if conf_file.is_some() {
-        let conf_file = File::open(conf_file.unwrap()).unwrap();
-        let conf_reader = BufReader::new(conf_file);
-        let conf_value: Value = serde_json::from_reader(conf_reader).unwrap();
-        let org_conf: OrganismConfig = serde_json::from_value(conf_value["organism"].clone()).unwrap();    
-        let rec_conf: recognizer::RecognizerConfig = serde_json::from_value(conf_value["recognizer"].clone()).unwrap();    
-        let con_conf: connector::ConnectorConfig = serde_json::from_value(conf_value["connector"].clone()).unwrap();    
-        //Some((conf_value["organism"].to_owned(), conf_value["pssm"].to_owned(), conf_value["connector"].to_owned()))
-        Some((org_conf, rec_conf, con_conf))
-    } else {
-        None
-    };
-    let org_file = File::open(org_file).unwrap();
-    let org_reader = BufReader::new(org_file);
-    let org_value: Value = serde_json::from_reader(org_reader).unwrap();
-    let conf = conf.unwrap();
-
-
-    
-    //let org_conf: OrganismConfig = serde_json::from_value(config.clone().unwrap().0).unwrap()    
-    from_value(&org_value[org_num], &conf.0, &conf.1, &conf.2).unwrap()
-}
