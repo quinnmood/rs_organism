@@ -2,30 +2,14 @@ mod connector;
 mod placement;
 mod recognizer;
 mod config;
+mod error;
+use crate::error::OrganismError;
 use crate::recognizer::Recognizer;
 use crate::connector::Connector;
-use crate::config::OrganismConfig;
-use crate::config::RecognizerConfig;
-use crate::config::ConnectorConfig;
-use serde::{Deserialize, Serialize};
+use crate::placement::Placement;
+use crate::config::{OrganismConfig, RecognizerConfig, ConnectorConfig};
 use serde_json::Value;
 use std::{fs, io, cell};
-use thiserror;
-
-#[derive(thiserror::Error, Debug)]
-pub enum OrganismError {
-    #[error("failed to load organism")]
-    LoadOrganismError,
-    #[error("failed to parse organism or config from json file")]
-    ParseJSONError(#[from] serde_json::Error),
-    #[error("failed to open organism or config file")]
-    IOError(#[from] std::io::Error),
-    #[error("failed to parse recognizer object")]
-    RecognizerError(#[from] recognizer::RecognizerError),
-    #[error("failed to parse connector object")]
-    ConnectorError(#[from] connector::ConnectorError),
-}
-
 
 #[derive(Clone, Debug, Default)]
 pub struct Organism {
@@ -118,6 +102,37 @@ impl Organism {
             }
             println!("");       
         }
+    }
+
+    pub fn place(&self, seq: &[char]) -> Placement{
+        let min_len: usize = self.len_recs();
+        let mut f_offset: usize = 0;
+        let mut r_offset: usize = seq.len() - min_len;
+        let mut n_align: usize  = seq.len() - min_len + 1;
+        let mut c_scores: Vec<f64> = vec![0.00; n_align];
+        let mut t_scores: Vec<f64> = vec![0.00; n_align];
+        let mut p_scores: Vec<f64> = vec![0.00; n_align];
+        let mut traceback: Vec<usize> = vec![0; self.recognizers.len() * (n_align - 1)];
+
+        for i in 0..self.recognizers.len() {
+          let curr_rec = self.recognizers[i].borrow();
+          r_offset += curr_rec.len();
+          let c_scores = curr_rec.calculate_row(&seq[f_offset..r_offset]);
+      
+          if i > 0 {
+            for j in 0..n_align {
+              for k in 0..n_align {
+                
+              }
+            }
+          } else {
+            p_scores = c_scores;
+          }
+
+          f_offset += curr_rec.len();
+
+        }
+        todo!();
     }
 
 }

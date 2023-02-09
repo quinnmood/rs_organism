@@ -5,7 +5,7 @@ fn main() {
     println!("Flipping row 0");
     org.print();
     org.rec_at_mut(0).borrow_mut().flip_row(0);
-
+    println!("");
     org.print();
 /*
     println!("Flipping row 2");

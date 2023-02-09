@@ -1,21 +1,13 @@
 use crate::config::ConnectorConfig;
-use serde::{Deserialize, Serialize};
+use crate::error::ConnectorError;
+use statrs::distribution::Normal;
 use serde_json::Value;
-use thiserror;
-
-#[derive(thiserror::Error, Debug)]
-pub enum ConnectorError {
-    #[error("failed to load connector")]
-    LoadConnectorError,
-    #[error("failed to parse connector from json file")]
-    ParseJSONError(#[from] serde_json::Error),
-}
 
 #[derive(Default, Debug, Clone)]
 pub struct Connector {
     mu: f64,
     sigma: f64,
-    scores: Vec<f64>,
+    alt: Normal,
     config: Option<ConnectorConfig>,
 }
 
@@ -28,12 +20,12 @@ impl Connector {
         self.sigma
     }
 
-    pub fn scores(&self) -> &Vec<f64> {
-        self.scores.as_ref()
+    pub fn alt(&self) -> &Vec<f64> {
+        self.alt.as_ref()
     }
 
     pub fn scores_mut(&mut self) -> &mut Vec<f64> {
-        self.scores.as_mut()
+        self.alt.as_mut()
     }
 
     pub fn config(&self) -> &ConnectorConfig {
@@ -53,7 +45,7 @@ impl Connector {
     }
 
     pub fn set_at(&mut self, val: f64, index: usize) {
-        self.scores[index] = val;
+        self.alt[index] = val;
     }
 
 }
@@ -70,7 +62,7 @@ pub fn connector(mu: f64, sigma: f64, config: Option<ConnectorConfig>) -> Connec
     Connector {
         mu,
         sigma,
-        scores: Vec::new(),
+        alt: Vec::new(),
         config,
     }
 }

@@ -1,17 +1,8 @@
-use serde::{Deserialize, Serialize};
-use serde_json::Value;
 use crate::config::RecognizerConfig;
+use crate::error::RecognizerError;
+use serde_json::Value;
 
 const BASES: [&str; 4] = ["a", "c", "g", "t"];
-
-#[derive(thiserror::Error, Debug)]
-pub enum RecognizerError {
-    #[error("failed to load recognizer")]
-    LoadRecognizerError,
-
-    #[error("failed to parse recognizer from JSON value")]
-    ParseJSONError(#[from] serde_json::Error),
-}
 
 #[derive(Default, Copy, Clone, Debug)]
 pub enum ShapeFeat {
@@ -148,6 +139,47 @@ impl Recognizer {
         for i in len - 1..0 {
             self.swap_cols(i, i - 1);
         }
+    }
+
+    pub fn calculate_row(&self, seq: &[char]) -> Vec<f64>{
+      match self.feat {
+        RecognizerFeat::Sequence => self.pssm_row(seq),
+        _ => self.shape_row(seq),
+        }
+    }
+
+    fn pssm_row(&self, seq: &[char]) -> Vec<f64>{
+      let mut score: f64 = 0.00;
+      let mut scores: Vec<f64> = Vec::with_capacity(seq.len());
+      let t_scores = self.matrix();
+
+      for i in 0..seq.len() - self.len + 1{
+        score = 0.00;
+        //print!("i = {}, ", i);
+        for j in 0..self.len(){
+
+          //println!("j = {}", j);
+          print!("{}", seq[i+j]);
+          match seq[i + j] {
+            'a' => score += t_scores[j * 4 + 0],
+            'A' => score += t_scores[j * 4 + 0],       
+            'c' => score += t_scores[j * 4 + 1],       
+            'C' => score += t_scores[j * 4 + 1],       
+            'g' => score += t_scores[j * 4 + 2],       
+            'G' => score += t_scores[j * 4 + 2],       
+            't' => score += t_scores[j * 4 + 3],       
+            'T' => score += t_scores[j * 4 + 3],
+             _  => break,
+          }
+        }
+        println!("");
+        scores.push(score);
+      }
+      scores
+    }
+
+    fn shape_row(&self, seq: &[char]) -> Vec<f64>{
+        Vec::<f64>::new()
     }
 }
 
