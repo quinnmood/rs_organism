@@ -68,7 +68,16 @@ impl Recognizer {
     }
 
     pub fn config(&self) -> &RecognizerConfig {
-        self.config.as_ref().expect("recognizer does not have a config")
+        self.config
+            .as_ref()
+            .expect("recognizer does not have a config")
+    }
+
+    pub fn to_pssm(&mut self) {
+        let mut matrix = self.matrix_mut();
+        for i in matrix {
+            *i = i.log2() / 0.25_f64.log2();
+        }
     }
 
     pub fn set_feat(&mut self, feat: RecognizerFeat) {
@@ -141,45 +150,37 @@ impl Recognizer {
         }
     }
 
-    pub fn calculate_row(&self, seq: &[char]) -> Vec<f64>{
-      match self.feat {
-        RecognizerFeat::Sequence => self.pssm_row(seq),
-        _ => self.shape_row(seq),
+    pub fn calculate_row(&self, seq: &[char], row: &mut Vec<f64>){
+        match self.feat {
+            RecognizerFeat::Sequence => self.pssm_row(seq, row),
+            _ => self.shape_row(seq, row),
         }
     }
 
-    fn pssm_row(&self, seq: &[char]) -> Vec<f64>{
-      let mut score: f64 = 0.00;
-      let mut scores: Vec<f64> = Vec::with_capacity(seq.len());
-      let t_scores = self.matrix();
+    fn pssm_row(&self, seq: &[char], row: &mut Vec<f64>){
+        let mut score: f64 = 0.00;
+        let t_scores = self.matrix();
 
-      for i in 0..seq.len() - self.len + 1{
-        score = 0.00;
-        //print!("i = {}, ", i);
-        for j in 0..self.len(){
-
-          //println!("j = {}", j);
-          print!("{}", seq[i+j]);
-          match seq[i + j] {
-            'a' => score += t_scores[j * 4 + 0],
-            'A' => score += t_scores[j * 4 + 0],       
-            'c' => score += t_scores[j * 4 + 1],       
-            'C' => score += t_scores[j * 4 + 1],       
-            'g' => score += t_scores[j * 4 + 2],       
-            'G' => score += t_scores[j * 4 + 2],       
-            't' => score += t_scores[j * 4 + 3],       
-            'T' => score += t_scores[j * 4 + 3],
-             _  => break,
-          }
+        for i in 0..seq.len() - self.len + 1 {
+            score = 0.00;
+            for j in 0..self.len() {
+                match seq[i + j] {
+                    'a' => score += t_scores[j * 4 + 0],
+                    'A' => score += t_scores[j * 4 + 0],
+                    'c' => score += t_scores[j * 4 + 1],
+                    'C' => score += t_scores[j * 4 + 1],
+                    'g' => score += t_scores[j * 4 + 2],
+                    'G' => score += t_scores[j * 4 + 2],
+                    't' => score += t_scores[j * 4 + 3],
+                    'T' => score += t_scores[j * 4 + 3],
+                    _ => break,
+                }
+            }
+            row[i] = score;
         }
-        println!("");
-        scores.push(score);
-      }
-      scores
     }
 
-    fn shape_row(&self, seq: &[char]) -> Vec<f64>{
-        Vec::<f64>::new()
+    fn shape_row(&self, seq: &[char], row: &mut Vec<f64>){
     }
 }
 
@@ -205,7 +206,6 @@ pub fn pssm_from_value(
     rec: &Value,
     conf: Option<&RecognizerConfig>,
 ) -> Result<Recognizer, RecognizerError> {
-    //let rec = rec.as_object()?["pwm"].as_array()?;
     let rec = rec.as_array().ok_or_else(|| {
         RecognizerError::ParseJSONError(serde::de::Error::invalid_type(
             serde::de::Unexpected::Option,

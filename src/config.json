@@ -58,7 +58,7 @@
     "MUTATE_VARIANCE_MU": 5,
     "SIGMA_MUTATOR": "linear",
     "MU_MUTATOR": "standard",
-    "EXPECTED_SEQ_LENGTH": 200
+    "MAX_SEQ_LEN": 200
   },
   "recognizer": {
     "MUTATE_PROBABILITY_RANDOM_COL": 0.075,
