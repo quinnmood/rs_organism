@@ -4,8 +4,11 @@ version = "0.1.1"
 edition = "2021"
 include = [
   "src/lib.rs",
-  "src/recognizer/mod.rs",
-  "src/connector/mod.rs",
+  "src/recognizer.rs",
+  "src/connector.rs",
+  "src/placement.rs",
+  "src/config/mod.rs",
+  "src/error/mod.rs",
 ]
 license = "MIT"
 description = "A struct used for a genetic programing algorithm"
@@ -15,4 +18,8 @@ description = "A struct used for a genetic programing algorithm"
 serde = { version = "1.0.117", features = ["derive"] }
 serde_derive = "1.0.117"
 serde_json = "1.0.59"
-
+statrs = "0.15.0"
+thiserror = "1.0.38"
+rand = "0.8.5"
+num-traits = "0.2.15"
+num-integer = "0.1.45"

@@ -1,9 +1,9 @@
+mod aux;
 mod config;
 mod connector;
 mod error;
 mod placement;
 mod recognizer;
-mod aux;
 use crate::config::{ConnectorConfig, OrganismConfig, RecognizerConfig};
 use crate::connector::Connector;
 use crate::error::OrganismError;
@@ -11,7 +11,7 @@ use crate::placement::Placement;
 use crate::recognizer::Recognizer;
 use rand::random;
 use serde_json::Value;
-use std::{cell, fs, io, f64, mem};
+use std::{cell, f64, fs, io, mem};
 
 #[derive(Clone, Debug, Default)]
 pub struct Organism {
@@ -31,8 +31,7 @@ impl Organism {
     }
 
     pub fn id(&self) -> usize {
-        self.id
-            .expect("organism does not have an id")
+        self.id.expect("organism does not have an id")
     }
 
     pub fn config(&self) -> &OrganismConfig {
@@ -92,8 +91,8 @@ impl Organism {
             return;
         }
 
-        let mut con_idx = 0;
-        let mut adj_idx = 0;
+        let con_idx;
+        let adj_idx;
         match rec_idx {
             0 => {
                 con_idx = 0;
@@ -190,20 +189,28 @@ impl Organism {
                         if t_row[j] < c_row[k] + g_score + rs_matrix[i][j] {
                             t_row[j] = c_row[k] + g_score + rs_matrix[i][j];
                             tr_matrix[i - 1][j] = gap;
-                            gs_matrix[i - 1][j] = g_score;       
+                            gs_matrix[i - 1][j] = g_score;
                         }
                     }
                 }
                 c_row = mem::replace(&mut t_row, vec![f64::NEG_INFINITY; n_align]);
             } else {
-                c_row.copy_from_slice(&rs_matrix[i])           
+                c_row.copy_from_slice(&rs_matrix[i])
             }
             f_offset += curr_rec.len();
         }
-        Placement::from_matrix(&seq, &rs_matrix, &gs_matrix, &tr_matrix, &rec_lengths, aux::maxf_idx(&c_row), min_len)
+        Placement::from_matrix(
+            &seq,
+            &rs_matrix,
+            &gs_matrix,
+            &tr_matrix,
+            &rec_lengths,
+            &c_row,
+            min_len,
+        )
     }
 
-    pub fn check(&mut self, seq_len: usize) -> Result<(), OrganismError>{
+    pub fn check(&mut self, seq_len: usize) -> Result<(), OrganismError> {
         if self.len_recs() > seq_len {
             return Err(OrganismError::ExceedSeqError);
         }

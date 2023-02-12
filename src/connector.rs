@@ -1,8 +1,8 @@
 use crate::config::ConnectorConfig;
 use crate::error::ConnectorError;
-use serde_json::Value;
-use statrs::distribution::{Normal, Continuous, ContinuousCDF};
 use num_integer::binomial;
+use serde_json::Value;
+use statrs::distribution::{Continuous, ContinuousCDF, Normal};
 
 #[derive(Debug, Clone)]
 pub struct Connector {
@@ -71,7 +71,6 @@ impl Connector {
             self.pdf.push(self.alt().pdf(i as f64));
             self.cdf.push(self.alt().cdf(i as f64));
         }
-
     }
 
     pub fn precompute_from_size(&mut self, len: usize) {
@@ -90,15 +89,19 @@ impl Connector {
         }
     }
 
-    pub fn score(&self, gap: usize, seq_len: usize, eff_len: usize, num_recs: usize) -> f64{
+    pub fn score(&self, gap: usize, seq_len: usize, eff_len: usize, num_recs: usize) -> f64 {
         let num: f64 = self.pdf[gap];
 
         let auc: f64 = self.cdf[seq_len - 1] - self.cdf[0];
 
-        let num: f64 = if auc > 1E-10 {num/auc} else {num / 0.000001};
+        let num: f64 = if auc > 1E-10 {
+            num / auc
+        } else {
+            num / 0.000001
+        };
 
-        let den: f64 = binomial((eff_len - (gap + 1)) as u64, (num_recs - 1) as u64) as f64 /
-                       binomial(eff_len as u64, num_recs as u64) as f64;
+        let den: f64 = binomial((eff_len - (gap + 1)) as u64, (num_recs - 1) as u64) as f64
+            / binomial(eff_len as u64, num_recs as u64) as f64;
 
         num.log2() - den.log2()
     }

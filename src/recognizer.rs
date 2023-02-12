@@ -74,7 +74,7 @@ impl Recognizer {
     }
 
     pub fn to_pssm(&mut self) {
-        let mut matrix = self.matrix_mut();
+        let matrix = self.matrix_mut();
         for i in matrix {
             *i = i.log2() / 0.25_f64.log2();
         }
@@ -150,19 +150,18 @@ impl Recognizer {
         }
     }
 
-    pub fn calculate_row(&self, seq: &[char], row: &mut Vec<f64>){
+    pub fn calculate_row(&self, seq: &[char], row: &mut Vec<f64>) {
         match self.feat {
             RecognizerFeat::Sequence => self.pssm_row(seq, row),
             _ => self.shape_row(seq, row),
         }
     }
 
-    fn pssm_row(&self, seq: &[char], row: &mut Vec<f64>){
-        let mut score: f64 = 0.00;
+    fn pssm_row(&self, seq: &[char], row: &mut Vec<f64>) {
         let t_scores = self.matrix();
 
         for i in 0..seq.len() - self.len + 1 {
-            score = 0.00;
+            let mut score = 0.00;
             for j in 0..self.len() {
                 match seq[i + j] {
                     'a' => score += t_scores[j * 4 + 0],
@@ -180,8 +179,7 @@ impl Recognizer {
         }
     }
 
-    fn shape_row(&self, seq: &[char], row: &mut Vec<f64>){
-    }
+    fn shape_row(&self, seq: &[char], row: &mut Vec<f64>) {}
 }
 
 pub fn from_value(

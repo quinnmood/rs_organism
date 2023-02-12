@@ -3,9 +3,9 @@ use std::time::Instant;
 
 fn main() {
     let mut seq: Vec<char> = Vec::new();
-    for i in 0..50 {
-        for b in ['a','c','g','t'] {
-            seq.push(b);   
+    for _i in 0..50 {
+        for b in ['a', 'c', 'g', 't'] {
+            seq.push(b);
         }
     }
     let mut org: organism::Organism =
@@ -24,8 +24,8 @@ fn main() {
     }
     org.print();
 
-    let now = Instant::now(); 
-    for i in 0..100 { 
+    let now = Instant::now();
+    for _i in 0..100 {
         org.place(&seq[0..200], None);
     }
     let el_time = now.elapsed();
